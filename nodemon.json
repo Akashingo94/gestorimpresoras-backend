@@ -1,0 +1,10 @@
+{
+  "watch": ["server.js", "*.js"],
+  "ext": "js,json",
+  "ignore": ["node_modules", "uploads"],
+  "delay": "1000",
+  "verbose": true,
+  "execMap": {
+    "js": "node"
+  }
+}

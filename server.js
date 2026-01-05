@@ -54,7 +54,6 @@ app.use(requestLogger);
 connectDatabase();
 
 const { requireAuth, requireAdmin, attachUser, authMiddleware } = authMiddlewareFactory();
-const { requireAuth, requireAdmin, attachUser, authMiddleware } = authMiddlewareFactory();
 
 const routeContext = {
   generateId,

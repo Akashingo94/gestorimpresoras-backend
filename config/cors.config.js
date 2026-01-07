@@ -4,12 +4,8 @@
  */
 
 const corsOptions = {
-  origin: [
-    'http://localhost:3000', 
-    'http://localhost:5173',
-    process.env.FRONTEND_URL || 'https://gestorimpresoras-frontend.vercel.app'
-  ],
-  credentials: true
+  origin: ['http://localhost:3000', 'http://localhost:5173'],
+  credentials: true // Permitir el envío de cookies
 };
 
 module.exports = corsOptions;

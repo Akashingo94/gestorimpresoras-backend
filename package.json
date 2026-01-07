@@ -6,8 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon --config nodemon.json server.js",
-    "check-db": "node check-mongodb.js",
-    "migrate": "node migrate-users.js"
+    "check-db": "node check-mongodb.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

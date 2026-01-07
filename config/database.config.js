@@ -6,7 +6,6 @@
 const mongoose = require('mongoose');
 const appConfig = require('./app.config');
 const logger = require('../utils/logger');
-// const { runAllMigrations } = require('../migrations/migrationRunner'); // ✅ Migraciones ya ejecutadas
 
 /**
  * Conecta a MongoDB y ejecuta inicializaciones

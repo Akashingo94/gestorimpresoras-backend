@@ -22,9 +22,14 @@ module.exports = (context, middleware) => {
   const { requireAdmin, requireAuth } = middleware;
   const { upload } = require('../config/multer.config');
 
+  // Rutas de perfil y preferencias (cualquier usuario autenticado)
   router.get('/preset-avatars', requireAuth, userController.getPresetAvatars);
   router.put('/profile', requireAuth, upload.single('avatar'), userController.updateProfile);
   router.post('/change-password', requireAuth, userController.changePassword);
+  router.get('/preferences', requireAuth, userController.getUserPreferences);
+  router.put('/preferences', requireAuth, userController.updateUserPreferences);
+  
+  // Rutas administrativas
   router.get('/', requireAdmin, userController.getAllUsers);
   router.get('/pending', requireAdmin, userController.getPendingUsers);
   router.get('/rejected', requireAdmin, userController.getRejectedUsers);

@@ -8,6 +8,29 @@ const UserSchema = new mongoose.Schema({
     role: { type: String, enum: ['ADMIN', 'TECHNICIAN', 'PENDING'], default: 'PENDING' },
     email: { type: String, required: true },
     avatarUrl: { type: String, default: null },
+    preferences: {
+        type: {
+            themeColor: {
+                id: { type: String, default: 'green' },
+                name: { type: String, default: 'Verde Esmeralda' },
+                hex: { type: String, default: '#10b981' },
+                twClass: { type: String, default: 'emerald' }
+            },
+            fontFamily: { type: String, default: 'Inter' },
+            fontSize: { type: String, default: 'Normal' },
+            system: {
+                appName: { type: String, default: 'GestorImpresoras' },
+                logoJson: { type: String, default: null },
+                logoSize: { type: Number, default: 120 }
+            }
+        },
+        default: () => ({
+            themeColor: { id: 'green', name: 'Verde Esmeralda', hex: '#10b981', twClass: 'emerald' },
+            fontFamily: 'Inter',
+            fontSize: 'Normal',
+            system: { appName: 'GestorImpresoras', logoJson: null, logoSize: 120 }
+        })
+    },
     deletedAt: { type: Date, default: null },
     rejectionReason: { type: String, default: null }
 }, { timestamps: true });

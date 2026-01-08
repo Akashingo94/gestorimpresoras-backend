@@ -261,6 +261,81 @@ async function getRejectedUsers(req, res) {
   }
 }
 
+/**
+ * Obtiene las preferencias del usuario autenticado
+ */
+async function getUserPreferences(req, res) {
+  try {
+    const userId = req.session.userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'No autenticado' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    // Devolver preferencias (siempre existen por el default en el schema)
+    res.json({ 
+      success: true, 
+      preferences: user.preferences 
+    });
+  } catch (err) {
+    addSystemLog('error', 'USERS', 'Error al obtener preferencias', err.message);
+    res.status(500).json({ error: 'Error en el servidor' });
+  }
+}
+
+/**
+ * Actualiza las preferencias del usuario autenticado
+ */
+async function updateUserPreferences(req, res) {
+  try {
+    const userId = req.session.userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'No autenticado' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    const { preferences } = req.body;
+    
+    // Actualizar preferencias manteniendo estructura
+    if (preferences.themeColor) {
+      user.preferences.themeColor = preferences.themeColor;
+    }
+    if (preferences.fontFamily) {
+      user.preferences.fontFamily = preferences.fontFamily;
+    }
+    if (preferences.fontSize) {
+      user.preferences.fontSize = preferences.fontSize;
+    }
+    if (preferences.system) {
+      user.preferences.system = {
+        ...user.preferences.system,
+        ...preferences.system
+      };
+    }
+
+    await user.save();
+    
+    addSystemLog('info', 'USERS', `Preferencias actualizadas para ${user.username}`);
+    
+    res.json({ 
+      success: true, 
+      preferences: user.preferences,
+      message: 'Preferencias actualizadas correctamente'
+    });
+  } catch (err) {
+    addSystemLog('error', 'USERS', 'Error al actualizar preferencias', err.message);
+    res.status(500).json({ error: 'Error en el servidor' });
+  }
+}
+
 module.exports = {
   getAllUsers,
   updateUserRole,
@@ -271,5 +346,7 @@ module.exports = {
   getRejectedUsers,
   updateProfile,
   changePassword,
-  getPresetAvatars
+  getPresetAvatars,
+  getUserPreferences,
+  updateUserPreferences
 };

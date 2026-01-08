@@ -47,41 +47,46 @@ const { addSystemLog } = logger;
 
 app.use(cors(corsConfig));
 app.use(express.json({ limit: appConfig.jsonLimit }));
-app.use(session(createSessionConfig()));
 app.use('/uploads', express.static(uploadDir));
 app.use(requestLogger);
 
-connectDatabase();
+// Inicialización asíncrona: Conectar MongoDB y configurar sesiones
+(async () => {
+  await connectDatabase();
+  
+  // Configurar sesiones después de conectar MongoDB
+  app.use(session(createSessionConfig()));
+  console.log('✅ Sesiones configuradas con MongoDB Store');
 
-const { requireAuth, requireAdmin, attachUser, authMiddleware } = authMiddlewareFactory();
+  const { requireAuth, requireAdmin, attachUser, authMiddleware } = authMiddlewareFactory();
 
-const routeContext = {
-  generateId,
-  mockSnmpQuery: snmpQueryService.mockSnmpQuery
-};
+  const routeContext = {
+    generateId,
+    mockSnmpQuery: snmpQueryService.mockSnmpQuery
+  };
 
-const routeMiddleware = {
-  requireAuth,
-  requireAdmin,
-  attachUser,
-  authMiddleware
-};
+  const routeMiddleware = {
+    requireAuth,
+    requireAdmin,
+    attachUser,
+    authMiddleware
+  };
 
-const routeConfig = {
-  appConfig,
-  upload
-};
+  const routeConfig = {
+    appConfig,
+    upload
+  };
 
-mountRoutes(app, routeContext, routeMiddleware, routeConfig);
+  mountRoutes(app, routeContext, routeMiddleware, routeConfig);
 
-
-app.listen(appConfig.port, '0.0.0.0', () => {
-    const ip = getLocalIp();
-    console.log(`\n🚀 SERVIDOR ACTIVO en:`);
-    console.log(`   - Local:   http://localhost:${appConfig.port}`);
-    console.log(`   - Red:     http://${ip}:${appConfig.port}`);
-    console.log(`\nEsperando conexiones del Frontend...`);
-    
-    addSystemLog('success', 'SERVER', 'Servidor iniciado correctamente', `Puerto: ${appConfig.port}, IP: ${ip}`);
-    addSystemLog('info', 'SERVER', 'Sistema de logs activo', 'Monitoreo en tiempo real disponible');
-});
+  app.listen(appConfig.port, '0.0.0.0', () => {
+      const ip = getLocalIp();
+      console.log(`\n🚀 SERVIDOR ACTIVO en:`);
+      console.log(`   - Local:   http://localhost:${appConfig.port}`);
+      console.log(`   - Red:     http://${ip}:${appConfig.port}`);
+      console.log(`\nEsperando conexiones del Frontend...`);
+      
+      addSystemLog('success', 'SERVER', 'Servidor iniciado correctamente', `Puerto: ${appConfig.port}, IP: ${ip}`);
+      addSystemLog('info', 'SERVER', 'Sistema de logs activo', 'Monitoreo en tiempo real disponible');
+  });
+})();

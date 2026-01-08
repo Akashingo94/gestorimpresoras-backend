@@ -59,12 +59,12 @@ Node.js v22.21.1        - Runtime JavaScript
 Express.js 4.x          - Framework web
 Mongoose 8.x            - ODM para MongoDB
 net-snmp 3.x            - Protocolo SNMP v2c
-express-session 1.x     - Gestión de sesiones
-connect-mongo 5.x       - Store de sesiones
-multer 1.x              - Carga de archivos
+express-session 1.18.x  - Gestión de sesiones
+connect-mongo 6.0.0     - Store MongoDB para sesiones
+multer 2.x              - Carga de archivos
 cors 2.x                - CORS middleware
-bcrypt 5.x              - Hash de contraseñas
-nodemailer 6.x          - Envío de emails
+bcrypt 6.x              - Hash de contraseñas
+nodemailer 7.x          - Envío de emails
 ```
 
 ---
@@ -379,9 +379,13 @@ lsof -ti:4000 | xargs kill -9
 ### Sesiones no persisten
 
 **Solución**:
-1. Verificar MongoDB conectado
-2. Verificar variable `SESSION_SECRET` en `.env`
-3. Limpiar cookies del navegador
+1. Verificar MongoDB conectado: `npm run check-db`
+2. Verificar colección `sessions` existe en MongoDB
+3. Confirmar `SESSION_SECRET` en `.env`
+4. Verificar `connect-mongo` v6.0.0 instalado correctamente
+5. Limpiar cookies del navegador
+
+**Nota**: El sistema usa `connect-mongo` v6 con `new MongoStore()`. Las sesiones se almacenan en la colección `sessions` de MongoDB, no en memoria.
 
 ### Emails no se envían
 

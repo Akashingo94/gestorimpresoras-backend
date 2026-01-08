@@ -4,14 +4,16 @@
  */
 
 const session = require('express-session');
-const MongoStore = require('connect-mongo');
+const MongoStore = require('connect-mongo').default || require('connect-mongo');
+const mongoose = require('mongoose');
 const appConfig = require('./app.config');
 
 /**
  * Crea la configuración de sesión con MongoDB Store
+ * Usa la conexión existente de mongoose
  */
 function createSessionConfig() {
-  const sessionConfig = {
+  return {
     secret: appConfig.sessionSecret,
     resave: false,
     saveUninitialized: false,
@@ -22,17 +24,11 @@ function createSessionConfig() {
       sameSite: 'lax'
     },
     name: 'printmaster.sid',
-    // connect-mongo v6 - se usa como función directa
-    store: MongoStore(session)({
+    store: new MongoStore({
       mongoUrl: appConfig.mongoUri,
-      touchAfter: 24 * 3600,
-      crypto: { secret: appConfig.sessionSecret }
+      touchAfter: 24 * 3600
     })
   };
-  
-  console.log('✅ Sesiones configuradas con MongoDB Store');
-
-  return sessionConfig;
 }
 
 module.exports = createSessionConfig;

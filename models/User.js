@@ -75,6 +75,13 @@ UserSchema.methods.comparePassword = async function(candidatePassword) {
  */
 UserSchema.statics.authenticate = async function(username, password) {
     try {
+        // Verificar conexión de MongoDB
+        if (this.db.readyState !== 1) {
+            const error = new Error('Base de datos no disponible');
+            error.name = 'MongooseServerSelectionError';
+            throw error;
+        }
+        
         // Buscar usuario por username o email (excluir eliminados)
         const user = await this.findOne({
             $or: [
@@ -92,6 +99,7 @@ UserSchema.statics.authenticate = async function(username, password) {
         const isMatch = await user.comparePassword(password);
         return isMatch ? user : null;
     } catch (error) {
+        // Propagar el error para que el controlador lo maneje
         throw error;
     }
 };

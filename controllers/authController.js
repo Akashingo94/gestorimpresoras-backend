@@ -53,8 +53,31 @@ async function login(req, res) {
       user: user.toJSON() 
     });
   } catch (err) {
+    // Detectar errores específicos de MongoDB
+    if (err.name === 'MongooseServerSelectionError' || err.name === 'MongoNetworkError') {
+      addSystemLog('error', 'AUTH', '❌ Base de datos no disponible', err.message);
+      return res.status(503).json({ 
+        error: '❌ Base de datos no disponible',
+        details: 'No se puede conectar con MongoDB. Contacta al administrador.',
+        code: 'DB_UNAVAILABLE'
+      });
+    }
+    
+    if (err.message && err.message.includes('buffering timed out')) {
+      addSystemLog('error', 'AUTH', '⏱️ Timeout al conectar con la base de datos', err.message);
+      return res.status(503).json({ 
+        error: '⏱️ Timeout de base de datos',
+        details: 'La conexión con MongoDB está tomando demasiado tiempo. Verifica que esté ejecutándose.',
+        code: 'DB_TIMEOUT'
+      });
+    }
+    
+    // Error genérico
     addSystemLog('error', 'AUTH', `Error en login`, err.message);
-    res.status(500).json({ error: 'Error en el servidor' });
+    res.status(500).json({ 
+      error: 'Error en el servidor',
+      details: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 }
 

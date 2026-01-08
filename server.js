@@ -106,7 +106,7 @@ const dbCheckMiddleware = (req, res, next) => {
 
   mountRoutes(app, routeContext, routeMiddleware, routeConfig);
 
-  app.listen(appConfig.port, '0.0.0.0', () => {
+  const server = app.listen(appConfig.port, '0.0.0.0', () => {
       const ip = getLocalIp();
       console.log(`\n🚀 SERVIDOR ACTIVO en:`);
       console.log(`   - Local:   http://localhost:${appConfig.port}`);
@@ -115,5 +115,23 @@ const dbCheckMiddleware = (req, res, next) => {
       
       addSystemLog('success', 'SERVER', 'Servidor iniciado correctamente', `Puerto: ${appConfig.port}, IP: ${ip}`);
       addSystemLog('info', 'SERVER', 'Sistema de logs activo', 'Monitoreo en tiempo real disponible');
+  });
+
+  // Manejo profesional de error de puerto en uso
+  server.on('error', (error) => {
+    if (error.code === 'EADDRINUSE') {
+      console.error(`\n❌ ERROR: El puerto ${appConfig.port} ya está en uso`);
+      console.error(`\n💡 Soluciones:`);
+      console.error(`   1. Detener el proceso que usa el puerto:`);
+      console.error(`      Windows: Get-NetTCPConnection -LocalPort ${appConfig.port} | Select OwningProcess`);
+      console.error(`               taskkill /PID [PID] /F`);
+      console.error(`   2. Cambiar el puerto en el archivo .env: PORT=4001\n`);
+      
+      addSystemLog('error', 'SERVER', `Puerto ${appConfig.port} en uso`, 'No se pudo iniciar el servidor');
+      process.exit(1);
+    } else {
+      console.error('❌ Error al iniciar servidor:', error.message);
+      process.exit(1);
+    }
   });
 })();

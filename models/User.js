@@ -17,18 +17,12 @@ const UserSchema = new mongoose.Schema({
                 twClass: { type: String, default: 'emerald' }
             },
             fontFamily: { type: String, default: 'Inter' },
-            fontSize: { type: String, default: 'Normal' },
-            system: {
-                appName: { type: String, default: 'GestorImpresoras' },
-                logoJson: { type: String, default: null },
-                logoSize: { type: Number, default: 120 }
-            }
+            fontSize: { type: String, default: 'Normal' }
         },
         default: () => ({
             themeColor: { id: 'green', name: 'Verde Esmeralda', hex: '#10b981', twClass: 'emerald' },
             fontFamily: 'Inter',
-            fontSize: 'Normal',
-            system: { appName: 'GestorImpresoras', logoJson: null, logoSize: 120 }
+            fontSize: 'Normal'
         })
     },
     deletedAt: { type: Date, default: null },

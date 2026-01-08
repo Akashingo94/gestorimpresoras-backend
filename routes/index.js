@@ -9,6 +9,7 @@ const userRoutes = require('./userRoutes');
 const printerRoutes = require('./printerRoutes');
 const logRoutes = require('./logRoutes');
 const systemLogRoutes = require('./systemLogRoutes');
+const systemConfigRoutes = require('./systemConfigRoutes');
 const networkRoutes = require('./networkRoutes');
 const createUploadRoutes = require('./uploadRoutes');
 const createHealthRoutes = require('./healthRoutes');
@@ -49,6 +50,9 @@ function mountRoutes(app, context, middleware, config) {
   // Rutas de logs (dos routers en el mismo path)
   app.use('/api/logs', logRoutes(context, middleware));
   app.use('/api/logs', systemLogRoutes(middleware));
+
+  // Rutas de configuración del sistema
+  app.use('/api/system/config', systemConfigRoutes(context, middleware));
 
   // Manejo de errores 404 (debe ser la última ruta)
   app.use((req, res) => {

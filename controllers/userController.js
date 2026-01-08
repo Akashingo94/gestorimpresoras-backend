@@ -304,7 +304,7 @@ async function updateUserPreferences(req, res) {
 
     const { preferences } = req.body;
     
-    // Actualizar preferencias manteniendo estructura
+    // Actualizar solo preferencias personales (tema y fuentes)
     if (preferences.themeColor) {
       user.preferences.themeColor = preferences.themeColor;
     }
@@ -313,12 +313,6 @@ async function updateUserPreferences(req, res) {
     }
     if (preferences.fontSize) {
       user.preferences.fontSize = preferences.fontSize;
-    }
-    if (preferences.system) {
-      user.preferences.system = {
-        ...user.preferences.system,
-        ...preferences.system
-      };
     }
 
     await user.save();

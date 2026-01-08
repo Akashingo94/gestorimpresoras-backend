@@ -40,6 +40,7 @@ const { getLocalIp } = require('./utils/network');
 const authMiddlewareFactory = require('./middleware/auth');
 const requestLogger = require('./middleware/requestLogger');
 const mountRoutes = require('./routes/index');
+const { isDatabaseConnected } = require('./config/database.config');
 
 const app = express();
 const generateId = () => Math.random().toString(36).substr(2, 9);
@@ -50,13 +51,39 @@ app.use(express.json({ limit: appConfig.jsonLimit }));
 app.use('/uploads', express.static(uploadDir));
 app.use(requestLogger);
 
+// Middleware de verificación de base de datos
+const dbCheckMiddleware = (req, res, next) => {
+  // Excluir health check del middleware
+  if (req.path === '/api/health' || req.path === '/') {
+    return next();
+  }
+  
+  if (!isDatabaseConnected()) {
+    return res.status(503).json({
+      error: 'Servicio temporalmente no disponible',
+      details: 'Base de datos no conectada. El sistema está intentando reconectar.',
+      code: 'DB_UNAVAILABLE',
+      retryAfter: 5
+    });
+  }
+  next();
+};
+
 // Inicialización asíncrona: Conectar MongoDB y configurar sesiones
 (async () => {
-  await connectDatabase();
+  const dbConnected = await connectDatabase();
   
-  // Configurar sesiones después de conectar MongoDB
-  app.use(session(createSessionConfig()));
-  console.log('✅ Sesiones configuradas con MongoDB Store');
+  // Configurar sesiones (funcionará cuando MongoDB se conecte)
+  if (dbConnected) {
+    app.use(session(createSessionConfig()));
+    console.log('✅ Sesiones configuradas con MongoDB Store');
+  } else {
+    console.warn('⚠️  Sesiones NO configuradas - MongoDB no disponible');
+    console.warn('⚠️  Las sesiones se configurarán automáticamente al reconectar');
+  }
+  
+  // Aplicar middleware de verificación de DB
+  app.use(dbCheckMiddleware);
 
   const { requireAuth, requireAdmin, attachUser, authMiddleware } = authMiddlewareFactory();
 

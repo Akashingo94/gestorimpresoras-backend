@@ -132,40 +132,102 @@ Crear archivo `.env` en la raíz del proyecto:
 MONGO_URI=mongodb://localhost:27017/printmaster_db
 
 # Puerto del servidor
-PORT=4000
+PORT=5000
 
 # Modo de desarrollo
 NODE_ENV=development
 
-# Gemini AI (Opcional - para análisis predictivo)
-GEMINI_API_KEY=tu_api_key_de_gemini
-
-# Email Service - Opción 1: Resend (Recomendado)
-EMAIL_SERVICE=resend
-RESEND_API_KEY=tu_api_key_de_resend
-EMAIL_FROM=noreply@tudominio.com
-
-# Email Service - Opción 2: SMTP (Alternativa)
-# EMAIL_SERVICE=smtp
-# SMTP_HOST=smtp.gmail.com
-# SMTP_PORT=587
-# SMTP_USER=tu_email@gmail.com
-# SMTP_PASS=tu_password_de_aplicación
-# EMAIL_FROM=tu_email@gmail.com
-
 # Session Secret (Cambiar en producción)
 SESSION_SECRET=cambiar_esto_por_un_secret_seguro_en_produccion
+SESSION_NAME=printmaster.sid
+
+# Frontend URL (para enlaces en emails)
+FRONTEND_URL=http://localhost:3000
+
+# 📧 Email Configuration - Opción 1: SMTP con Gmail (Recomendado para desarrollo)
+EMAIL_PROVIDER=smtp
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=tu-email@gmail.com
+SMTP_PASS=tu_contraseña_de_aplicacion  # Ver nota abajo
+EMAIL_FROM_NAME=PrintMaster System
+EMAIL_FROM_ADDRESS=tu-email@gmail.com
+
+# 📧 Email Configuration - Opción 2: Resend API (Recomendado para producción)
+# EMAIL_PROVIDER=resend
+# RESEND_API_KEY=re_TuApiKey
+# EMAIL_FROM_NAME=PrintMaster System
+# EMAIL_FROM_ADDRESS=noreply@tudominio.com  # Requiere dominio verificado
+# FRONTEND_URL=https://tudominio.com
+
+# Gemini AI (Opcional - para análisis predictivo)
+GEMINI_API_KEY=tu_api_key_de_gemini
 ```
+
+### 📧 Configuración de Emails
+
+#### Opción 1: SMTP con Gmail (Desarrollo)
+
+**Ventajas:** Gratis, fácil de configurar, no requiere dominio  
+**Límites:** 500 emails/día
+
+**Paso a paso:**
+
+1. **Activa verificación en 2 pasos en Gmail:**
+   - Ve a: https://myaccount.google.com/security
+   - Activa "Verificación en dos pasos"
+
+2. **Genera una contraseña de aplicación:**
+   - Ve a: https://myaccount.google.com/apppasswords
+   - Selecciona "Correo" → "Otro (nombre personalizado)"
+   - Ingresa: "Gestor Impresoras"
+   - Copia la contraseña de 16 caracteres (sin espacios)
+
+3. **Configura tu `.env`:**
+   ```env
+   EMAIL_PROVIDER=smtp
+   SMTP_HOST=smtp.gmail.com
+   SMTP_PORT=587
+   SMTP_SECURE=false
+   SMTP_USER=tu-email@gmail.com
+   SMTP_PASS=abcdefghijklmnop  # Contraseña de aplicación
+   EMAIL_FROM_NAME=PrintMaster System
+   EMAIL_FROM_ADDRESS=tu-email@gmail.com
+   ```
+
+4. **Reinicia el servidor**
+
+✅ **Resultado:** Podrás enviar emails a cualquier destinatario
+
+#### Opción 2: Resend API (Producción)
+
+**Ventajas:** Profesional, mejor deliverability, analytics  
+**Límites:** 100 emails/día (gratis), requiere dominio verificado
+
+**Modo Sandbox (desarrollo):**
+- Solo envía a tu email registrado en Resend
+- Usa: `EMAIL_FROM_ADDRESS=onboarding@resend.dev`
+
+**Modo Producción:**
+1. Verifica un dominio en: https://resend.com/domains
+2. Configura DNS (SPF, DKIM, DMARC)
+3. Usa tu dominio: `EMAIL_FROM_ADDRESS=noreply@tudominio.com`
+
+📖 **Documentación completa:** Ver [docs/EMAIL_CONFIGURATION.md](docs/EMAIL_CONFIGURATION.md)
 
 ### Variables Importantes
 
 | Variable | Descripción | Valor por Defecto |
 |----------|-------------|-------------------|
 | `MONGO_URI` | Conexión MongoDB | `mongodb://localhost:27017/printmaster_db` |
-| `PORT` | Puerto del servidor | `4000` |
+| `PORT` | Puerto del servidor | `5000` |
 | `NODE_ENV` | Entorno | `development` |
 | `SESSION_SECRET` | Secret para sesiones | (requerido) |
-| `EMAIL_SERVICE` | Servicio de email | `resend` o `smtp` |
+| `EMAIL_PROVIDER` | Servicio de email | `smtp` o `resend` |
+| `SMTP_USER` | Email Gmail | (requerido para SMTP) |
+| `SMTP_PASS` | Contraseña de app | (requerido para SMTP) |
+| `RESEND_API_KEY` | API Key Resend | (requerido para Resend) |
 
 ---
 

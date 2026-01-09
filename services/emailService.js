@@ -104,7 +104,16 @@ async function sendWithResend({ to, subject, text, html }) {
             } else {
               const errorMsg = jsonData.message || `Error ${res.statusCode}`;
               addSystemLog('error', 'EMAIL', `Error Resend (${res.statusCode}) a ${to}`, errorMsg);
-              reject(new Error(errorMsg));
+              
+              // Error 403: Modo sandbox - solo puede enviar al email registrado
+              if (res.statusCode === 403 && errorMsg.includes('testing emails')) {
+                const sandboxError = new Error('RESEND_SANDBOX_MODE');
+                sandboxError.statusCode = 403;
+                sandboxError.details = errorMsg;
+                reject(sandboxError);
+              } else {
+                reject(new Error(errorMsg));
+              }
             }
           } catch (parseError) {
             addSystemLog('error', 'EMAIL', `Error parseando respuesta Resend`, parseError.message);

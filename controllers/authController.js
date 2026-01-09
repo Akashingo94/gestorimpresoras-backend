@@ -201,8 +201,20 @@ async function forgotPassword(req, res) {
       addSystemLog('success', 'AUTH', `Email de recuperación enviado a ${user.email}`);
     } catch (emailError) {
       addSystemLog('error', 'EMAIL', `Error enviando email de recuperación`, emailError.message);
+      
+      // Error específico de modo sandbox de Resend
+      if (emailError.message === 'RESEND_SANDBOX_MODE') {
+        return res.status(403).json({ 
+          error: 'Modo sandbox de Resend activo',
+          message: 'En modo desarrollo, Resend solo permite enviar emails a la dirección registrada en tu cuenta. Para enviar a otros destinatarios, verifica un dominio en resend.com/domains o cambia a EMAIL_PROVIDER=smtp en el archivo .env',
+          details: emailError.details,
+          suggestion: 'Usa SMTP como alternativa o verifica un dominio en Resend'
+        });
+      }
+      
       return res.status(500).json({ 
-        error: 'Error al enviar el email de recuperación. Inténtalo más tarde.' 
+        error: 'Error al enviar el email de recuperación. Inténtalo más tarde.',
+        details: process.env.NODE_ENV === 'development' ? emailError.message : undefined
       });
     }
     

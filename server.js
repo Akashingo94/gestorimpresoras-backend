@@ -24,6 +24,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const session = require('express-session');
+const mongoose = require('mongoose');
 
 console.log('🔍 [DEBUG] PORT from .env:', process.env.PORT);
 
@@ -106,7 +107,71 @@ const dbCheckMiddleware = (req, res, next) => {
 
   mountRoutes(app, routeContext, routeMiddleware, routeConfig);
 
-  const server = app.listen(appConfig.port, '0.0.0.0', () => {
+  let server = null;
+  let isShuttingDown = false;
+
+  // Función para cerrar el servidor correctamente
+  const gracefulShutdown = async (signal) => {
+    if (isShuttingDown) return; // Evitar múltiples llamadas
+    isShuttingDown = true;
+    
+    console.log(`\n⚠️ Señal ${signal} recibida. Cerrando servidor correctamente...`);
+    
+    // Forzar cierre después de 10 segundos
+    const forceTimeout = setTimeout(() => {
+      console.error('⚠️ Forzando cierre del servidor...');
+      process.exit(1);
+    }, 10000);
+    
+    try {
+      if (server) {
+        await new Promise((resolve) => {
+          server.close(() => {
+            console.log('✅ Servidor HTTP cerrado');
+            resolve();
+          });
+        });
+      }
+      
+      if (mongoose.connection.readyState === 1) {
+        await mongoose.connection.close();
+        console.log('✅ Conexión MongoDB cerrada');
+      }
+      
+      clearTimeout(forceTimeout);
+      process.exit(0);
+    } catch (error) {
+      console.error('❌ Error durante el cierre:', error);
+      clearTimeout(forceTimeout);
+      process.exit(1);
+    }
+  };
+
+  // Remover listeners previos para evitar duplicados
+  process.removeAllListeners('SIGTERM');
+  process.removeAllListeners('SIGINT');
+  process.removeAllListeners('SIGUSR2');
+  process.removeAllListeners('uncaughtException');
+  process.removeAllListeners('unhandledRejection');
+
+  // Capturar señales de terminación
+  process.once('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.once('SIGINT', () => gracefulShutdown('SIGINT'));
+  process.once('SIGUSR2', () => gracefulShutdown('SIGUSR2')); // Nodemon reload
+
+  // Manejo de errores no capturados
+  process.on('uncaughtException', (error) => {
+    console.error('❌ Excepción no capturada:', error);
+    addSystemLog('error', 'SERVER', 'Excepción no capturada', error.message);
+    gracefulShutdown('uncaughtException');
+  });
+
+  process.on('unhandledRejection', (reason, promise) => {
+    console.error('❌ Promise rechazada no manejada:', reason);
+    addSystemLog('error', 'SERVER', 'Promise rechazada', String(reason));
+  });
+
+  server = app.listen(appConfig.port, '0.0.0.0', () => {
       const ip = getLocalIp();
       console.log(`\n🚀 SERVIDOR ACTIVO en:`);
       console.log(`   - Local:   http://localhost:${appConfig.port}`);
@@ -118,7 +183,7 @@ const dbCheckMiddleware = (req, res, next) => {
   });
 
   // Manejo profesional de error de puerto en uso
-  server.on('error', (error) => {
+  server.on('error', async (error) => {
     if (error.code === 'EADDRINUSE') {
       console.error(`\n❌ ERROR: El puerto ${appConfig.port} ya está en uso`);
       console.error(`\n💡 Soluciones:`);
@@ -128,9 +193,21 @@ const dbCheckMiddleware = (req, res, next) => {
       console.error(`   2. Cambiar el puerto en el archivo .env: PORT=4001\n`);
       
       addSystemLog('error', 'SERVER', `Puerto ${appConfig.port} en uso`, 'No se pudo iniciar el servidor');
-      process.exit(1);
+      
+      // Cerrar correctamente usando async/await (Mongoose 8)
+      try {
+        if (mongoose.connection.readyState === 1) {
+          await mongoose.connection.close();
+          console.log('✅ Conexión MongoDB cerrada');
+        }
+      } catch (err) {
+        console.error('⚠️ Error al cerrar MongoDB:', err.message);
+      } finally {
+        process.exit(1);
+      }
     } else {
       console.error('❌ Error al iniciar servidor:', error.message);
+      addSystemLog('error', 'SERVER', 'Error al iniciar', error.message);
       process.exit(1);
     }
   });

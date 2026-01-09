@@ -6,5 +6,13 @@
   "verbose": true,
   "execMap": {
     "js": "node"
+  },
+  "signal": "SIGTERM",
+  "events": {
+    "restart": "echo '🔄 Reiniciando servidor...'",
+    "crash": "echo '💥 Servidor crashed - Nodemon esperando cambios...'"
+  },
+  "env": {
+    "NODE_ENV": "development"
   }
 }

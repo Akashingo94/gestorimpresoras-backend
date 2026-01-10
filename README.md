@@ -42,12 +42,23 @@ Backend RESTful para sistema de gestión y monitoreo de impresoras en red median
 - Sistema de parsers modulares por fabricante
 - **Auto-reconexión resiliente**: El servidor continúa operando si MongoDB se cae
 - **Health monitoring**: Endpoint de salud con estado de base de datos
+- **🔄 Recuperación automática de IP**: Resuelve hostname cuando cambia la IP por DHCP
+- **📍 Actualización inteligente**: Detecta y actualiza IPs automáticamente via DNS
+
+### 🗄️ Gestión de Impresoras
+- CRUD completo de impresoras
+- **Soft Delete**: Sistema de archivado con motivo obligatorio
+- Registro de eliminaciones para auditoría
+- Restauración de impresoras archivadas (solo admin)
+- Historial completo conservado
+- Logs detallados de todas las operaciones
 
 ### 🛠️ Gestión de Mantenimiento
 - Registro completo de mantenimientos
 - Upload de documentos (facturas, reportes)
 - Historial de actividades
-- System logs para auditoría
+- **System logs en tiempo real**: Monitoreo con polling cada 3 segundos
+- Logs persistentes para auditoría
 
 ### 🤖 Inteligencia Artificial
 - Integración con Gemini AI
@@ -505,6 +516,45 @@ Esta migración:
 1. Verificar credenciales en `.env`
 2. Para Gmail: generar contraseña de aplicación
 3. Verificar logs del servidor para errores SMTP
+
+---
+
+## 🆕 Novedades v1.2.1
+
+### 🔄 Recuperación Automática de IP
+El sistema ahora puede **recuperar automáticamente** la IP de una impresora cuando cambia por DHCP:
+
+1. Al sincronizar (SYNC HARDWARE), si la IP falla
+2. El sistema resuelve el hostname configurado via DNS
+3. Actualiza la IP automáticamente en la base de datos
+4. Reintenta la conexión SNMP con la nueva IP
+5. Notifica al usuario del cambio
+
+**Requisitos:**
+- Configurar hostname en cada impresora
+- Registrar hostname en el servidor DNS
+- Ver documentación completa en: `docs/AUTO_IP_RECOVERY.md`
+
+### 🗑️ Sistema de Archivado (Soft Delete)
+Las impresoras ahora se archivan en lugar de eliminarse permanentemente:
+
+- **Motivo obligatorio**: Admin debe proporcionar razón para eliminar
+- **Datos conservados**: Modelo, IP, ubicación, historial completo
+- **Auditoría completa**: Quién eliminó, cuándo y por qué
+- **Restauración**: Admins pueden restaurar impresoras archivadas
+- **System Logs**: Cada eliminación queda registrada
+
+**Endpoints nuevos:**
+- `GET /api/printers/archived` - Ver impresoras archivadas (admin)
+- `POST /api/printers/:id/restore` - Restaurar impresora (admin)
+
+### 📊 System Logs Mejorados
+- Cambio de EventSource (SSE) a polling cada 3 segundos
+- Mayor confiabilidad con cookies de sesión
+- Logs persistentes en tiempo real
+- Mejor manejo de errores y reconexión
+
+**Ver cambios completos:** [CHANGELOG.md](CHANGELOG.md)
 
 ---
 

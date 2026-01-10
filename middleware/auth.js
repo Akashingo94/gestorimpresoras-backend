@@ -25,20 +25,34 @@ const requireAuth = (req, res, next) => {
  * Solo permite acceso a usuarios con rol ADMIN
  */
 const requireAdmin = (req, res, next) => {
+  console.log('🔐 [requireAdmin] Verificando acceso...');
+  console.log('   Session ID:', req.sessionID);
+  console.log('   Session:', req.session);
+  console.log('   Cookies:', req.headers.cookie);
+  console.log('   User Agent:', req.headers['user-agent']?.substring(0, 50));
+  
   if (!req.session || !req.session.userId) {
+    console.log('   ❌ Sin sesión - 401');
     return res.status(401).json({ 
       error: 'No autenticado', 
-      requiresLogin: true 
+      requiresLogin: true,
+      debug: process.env.NODE_ENV === 'development' ? {
+        hasSession: !!req.session,
+        sessionId: req.sessionID,
+        hasCookie: !!req.headers.cookie
+      } : undefined
     });
   }
   
   if (req.session.role !== 'ADMIN') {
+    console.log('   ❌ No es ADMIN - 403. Rol actual:', req.session.role);
     return res.status(403).json({ 
       error: 'Acceso denegado', 
       message: 'Se requieren permisos de administrador' 
     });
   }
   
+  console.log('   ✅ Acceso permitido -', req.session.username);
   next();
 };
 

@@ -15,8 +15,11 @@ const printerController = require('../controllers/printerController');
 module.exports = (context, middleware) => {
   const { authMiddleware, requireAdmin } = middleware;
 
-  // GET /api/printers - Listar todas las impresoras
+  // GET /api/printers - Listar todas las impresoras activas
   router.get('/', authMiddleware, printerController.getAllPrinters);
+  
+  // GET /api/printers/archived - Listar impresoras archivadas (admin only)
+  router.get('/archived', requireAdmin, printerController.getArchivedPrinters);
 
   // POST /api/printers - Crear nueva impresora
   router.post('/', authMiddleware, printerController.createPrinter);
@@ -24,8 +27,11 @@ module.exports = (context, middleware) => {
   // PUT /api/printers/:id - Actualizar impresora
   router.put('/:id', authMiddleware, printerController.updatePrinter);
 
-  // DELETE /api/printers/:id - Eliminar impresora (admin only)
+  // DELETE /api/printers/:id - Archivar impresora (admin only)
   router.delete('/:id', requireAdmin, printerController.deletePrinter);
+  
+  // POST /api/printers/:id/restore - Restaurar impresora archivada (admin only)
+  router.post('/:id/restore', requireAdmin, printerController.restorePrinter);
 
   // POST /api/printer/sync - Sincronizar impresora vía SNMP
   router.post('/sync', authMiddleware, (req, res) => 

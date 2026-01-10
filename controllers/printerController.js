@@ -13,11 +13,11 @@ const {
 } = require('../services/snmpService');
 
 /**
- * Lista todas las impresoras
+ * Lista todas las impresoras activas (no eliminadas)
  */
 async function getAllPrinters(req, res) {
   try {
-    const printers = await Printer.find().sort({ location: 1 });
+    const printers = await Printer.find({ deleted: false }).sort({ location: 1 });
     
     // Limpiar niveles de tóner para impresoras monocromáticas antes de enviar
     const cleanedPrinters = printers.map(printer => {
@@ -120,22 +120,105 @@ async function updatePrinter(req, res) {
 /**
  * Elimina una impresora
  */
+/**
+ * Elimina una impresora (soft delete - archivado)
+ */
 async function deletePrinter(req, res) {
+  const { id } = req.params;
+  const { reason } = req.body;
+  
+  try {
+    const printer = await Printer.findOne({ _id: id, deleted: false });
+    if (!printer) {
+      return res.status(404).json({ error: 'Impresora no encontrada' });
+    }
+    
+    // Validar que se proporcione un motivo
+    if (!reason || reason.trim().length === 0) {
+      return res.status(400).json({ error: 'Se requiere un motivo para eliminar la impresora' });
+    }
+    
+    // Soft delete: marcar como eliminada en lugar de borrar
+    printer.deleted = true;
+    printer.deletedAt = new Date();
+    printer.deletedBy = req.session.userId;
+    printer.deletionReason = reason.trim();
+    await printer.save();
+    
+    addSystemLog('warn', 'PRINTER_DELETED', 
+      `Impresora archivada: ${printer.model || 'Desconocida'}`, 
+      `IP: ${printer.ipAddress || 'N/A'} | Ubicación: ${printer.location || 'N/A'} | Usuario: ${req.session.username} | Motivo: ${reason}`
+    );
+    
+    res.json({ 
+      message: 'Impresora archivada correctamente',
+      printer: {
+        id: printer._id,
+        model: printer.model,
+        location: printer.location,
+        deletedAt: printer.deletedAt
+      }
+    });
+  } catch (err) {
+    addSystemLog('error', 'PRINTERS', 'Error al archivar impresora', err.message);
+    res.status(500).json({ error: err.message });
+  }
+}
+
+/**
+ * Lista impresoras archivadas (solo admins)
+ */
+async function getArchivedPrinters(req, res) {
+  try {
+    const archived = await Printer.find({ deleted: true })
+      .populate('deletedBy', 'username email')
+      .sort({ deletedAt: -1 });
+    
+    const cleanedArchived = archived.map(printer => {
+      const printerObj = printer.toJSON();
+      if (!printerObj.id && printerObj._id) {
+        printerObj.id = printerObj._id.toString();
+        delete printerObj._id;
+      }
+      return printerObj;
+    });
+    
+    res.json(cleanedArchived);
+  } catch (err) {
+    addSystemLog('error', 'PRINTERS', 'Error al listar impresoras archivadas', err.message);
+    res.status(500).json({ error: err.message });
+  }
+}
+
+/**
+ * Restaura una impresora archivada (solo admins)
+ */
+async function restorePrinter(req, res) {
   const { id } = req.params;
   
   try {
-    const printer = await Printer.findById(id);
+    const printer = await Printer.findOne({ _id: id, deleted: true });
     if (!printer) {
-      return res.status(404).json({ error: 'Printer not found' });
+      return res.status(404).json({ error: 'Impresora archivada no encontrada' });
     }
     
-    await Printer.findByIdAndDelete(id);
-    await MaintenanceLog.deleteMany({ printerId: id });
+    printer.deleted = false;
+    printer.deletedAt = null;
+    printer.deletedBy = null;
+    printer.deletionReason = null;
+    await printer.save();
     
-    addSystemLog('warn', 'API', `Impresora eliminada: ${printer.model || 'Desconocida'}`, `IP: ${printer.ipAddress || 'N/A'}, Usuario: ${req.session.username}`);
-    res.json({ message: 'Deleted' });
+    addSystemLog('success', 'PRINTER_RESTORED', 
+      `Impresora restaurada: ${printer.model || 'Desconocida'}`, 
+      `IP: ${printer.ipAddress || 'N/A'} | Ubicación: ${printer.location || 'N/A'} | Usuario: ${req.session.username}`
+    );
+    
+    res.json({ 
+      message: 'Impresora restaurada correctamente',
+      printer: printer.toJSON()
+    });
   } catch (err) {
-    addSystemLog('error', 'PRINTERS', 'Error al eliminar impresora', err.message);
+    addSystemLog('error', 'PRINTERS', 'Error al restaurar impresora', err.message);
     res.status(500).json({ error: err.message });
   }
 }
@@ -167,34 +250,76 @@ async function syncPrinter(req, res, { mockSnmpQuery }) {
       hardwareData = await mockSnmpQuery(session, ip, brand, community);
     } catch (snmpError) {
       console.log(`⚠️ Fallo inicial de SNMP en IP ${ip}`);
+      addSystemLog('warn', 'PRINTER_SYNC', `Error SNMP en IP ${ip}`, `Intentando resolución automática de hostname`);
       
+      // Intentar obtener hostname de múltiples fuentes
       const hostname = previousPrinter?.hostname || req.body.hostname;
+      
       if (hostname && hostname.trim() !== '') {
         console.log(`🔄 Intentando resolver hostname "${hostname}"...`);
+        addSystemLog('info', 'PRINTER_SYNC', `Resolviendo hostname: ${hostname}`, `IP original: ${ip}`);
         
-        const resolvedIP = await resolveHostnameToIP(hostname);
-        
-        if (resolvedIP && resolvedIP !== ip) {
-          console.log(`📍 Nueva IP detectada: ${ip} -> ${resolvedIP}`);
+        try {
+          const resolvedIP = await resolveHostnameToIP(hostname);
           
-          session.close();
-          session = snmp.createSession(resolvedIP, community, {
-            timeout: 3000,
-            retries: 2,
-            version: snmp.Version2c
-          });
-          
-          if (id) {
-            await Printer.findByIdAndUpdate(id, { $set: { ipAddress: resolvedIP } });
+          if (resolvedIP && resolvedIP !== ip) {
+            console.log(`📍 Nueva IP detectada: ${ip} -> ${resolvedIP}`);
+            addSystemLog('success', 'PRINTER_SYNC', 
+              `IP actualizada automáticamente`, 
+              `Hostname: ${hostname} | IP anterior: ${ip} | Nueva IP: ${resolvedIP}`
+            );
+            
+            // Cerrar sesión anterior y crear nueva con la IP resuelta
+            session.close();
+            session = snmp.createSession(resolvedIP, community, {
+              timeout: 3000,
+              retries: 2,
+              version: snmp.Version2c
+            });
+            
+            // Actualizar IP en base de datos si existe el registro
+            if (id) {
+              await Printer.findByIdAndUpdate(id, { $set: { ipAddress: resolvedIP } });
+            }
+            
+            ip = resolvedIP;
+            ipWasUpdated = true;
+            
+            // Reintentar consulta SNMP con nueva IP
+            hardwareData = await mockSnmpQuery(session, ip, brand, community);
+            
+          } else if (resolvedIP === ip) {
+            // El hostname resuelve a la misma IP, el problema es otro
+            console.log(`ℹ️ Hostname resuelve a la misma IP (${ip}), problema de SNMP o firewall`);
+            addSystemLog('error', 'PRINTER_SYNC', 
+              `Error SNMP pero IP correcta`, 
+              `Hostname: ${hostname} | IP: ${ip} | Verificar firewall o comunidad SNMP`
+            );
+            throw snmpError;
+          } else {
+            // No se pudo resolver hostname
+            console.log(`❌ No se pudo resolver hostname "${hostname}"`);
+            addSystemLog('error', 'PRINTER_SYNC', 
+              `Fallo resolución de hostname`, 
+              `Hostname: ${hostname} | IP original: ${ip} | No se encontró en DNS`
+            );
+            throw snmpError;
           }
-          
-          ip = resolvedIP;
-          ipWasUpdated = true;
-          hardwareData = await mockSnmpQuery(session, ip, brand, community);
-        } else {
-          throw snmpError;
+        } catch (dnsError) {
+          console.error(`❌ Error al resolver hostname:`, dnsError.message);
+          addSystemLog('error', 'PRINTER_SYNC', 
+            `Error en resolución DNS`, 
+            `Hostname: ${hostname} | IP: ${ip} | Error: ${dnsError.message}`
+          );
+          throw snmpError; // Lanzar el error SNMP original
         }
       } else {
+        // No hay hostname configurado
+        console.log(`❌ Sin hostname configurado para recuperación automática`);
+        addSystemLog('error', 'PRINTER_SYNC', 
+          `Error SNMP sin hostname`, 
+          `IP: ${ip} | Configure un hostname para recuperación automática de IP`
+        );
         throw snmpError;
       }
     }
@@ -226,6 +351,19 @@ async function syncPrinter(req, res, { mockSnmpQuery }) {
     }
     
     let printerResponse = cleanPrinterResponse(updatedPrinter.toJSON());
+    
+    // Si la IP fue actualizada automáticamente, incluir información en la respuesta
+    if (ipWasUpdated) {
+      printerResponse.ipUpdated = true;
+      printerResponse.previousIP = originalIP;
+      printerResponse.message = `✅ IP actualizada automáticamente: ${originalIP} → ${ip}`;
+      
+      addSystemLog('success', 'PRINTER_SYNC', 
+        `Sincronización exitosa con nueva IP`, 
+        `Impresora: ${printerResponse.model || 'N/A'} | IP anterior: ${originalIP} | Nueva IP: ${ip}`
+      );
+    }
+    
     res.json(printerResponse);
     
   } catch (err) {
@@ -404,6 +542,8 @@ module.exports = {
   createPrinter,
   updatePrinter,
   deletePrinter,
+  getArchivedPrinters,
+  restorePrinter,
   syncPrinter,
   getPrinterSupplies
 };

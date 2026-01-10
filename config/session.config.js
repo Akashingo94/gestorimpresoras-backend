@@ -13,15 +13,18 @@ const appConfig = require('./app.config');
  * Usa la conexión existente de mongoose
  */
 function createSessionConfig() {
+  const isProduction = appConfig.isProduction;
+  
   return {
     secret: appConfig.sessionSecret,
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: appConfig.isProduction,
+      secure: false, // Deshabilitado para desarrollo local
       httpOnly: true,
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 días
-      sameSite: 'lax'
+      sameSite: 'lax',
+      domain: undefined // Sin restricción de dominio para funcionar con .local
     },
     name: 'printmaster.sid',
     store: new MongoStore({

@@ -17,7 +17,12 @@ const PrinterSchema = new mongoose.Schema({
   driver: Object,
   firmwareFile: Object,
   lastMaintenance: Date,
-  lastStatusUpdate: Date
+  lastStatusUpdate: Date,
+  // Soft delete fields
+  deleted: { type: Boolean, default: false },
+  deletedAt: Date,
+  deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  deletionReason: String
 }, { timestamps: true });
 
 PrinterSchema.set('toJSON', {
@@ -35,15 +40,29 @@ PrinterSchema.set('toJSON', {
  * @returns {Promise<Printer|null>}
  */
 PrinterSchema.statics.findByIpOrId = async function(identifier) {
-  // Intentar buscar por IP primero
-  let printer = await this.findOne({ ipAddress: identifier });
+  // Intentar buscar por IP primero (solo activas)
+  let printer = await this.findOne({ ipAddress: identifier, deleted: false });
   
   // Si no se encuentra y parece un ObjectId, buscar por ID
   if (!printer && mongoose.Types.ObjectId.isValid(identifier)) {
-    printer = await this.findById(identifier);
+    printer = await this.findOne({ _id: identifier, deleted: false });
   }
   
   return printer;
+};
+
+/**
+ * Encuentra todas las impresoras activas (no eliminadas)
+ */
+PrinterSchema.statics.findActive = function(query = {}) {
+  return this.find({ ...query, deleted: false });
+};
+
+/**
+ * Encuentra todas las impresoras archivadas (eliminadas)
+ */
+PrinterSchema.statics.findArchived = function(query = {}) {
+  return this.find({ ...query, deleted: true });
 };
 
 module.exports = mongoose.model('Printer', PrinterSchema);

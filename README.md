@@ -60,6 +60,21 @@ Backend RESTful para sistema de gestión y monitoreo de impresoras en red median
 - **System logs en tiempo real**: Monitoreo con polling cada 3 segundos
 - Logs persistentes para auditoría
 
+### 🔔 Sistema de Notificaciones (NEW)
+- **Notificaciones persistentes en MongoDB**: Sin localStorage
+- Notificaciones por usuario con estado leído/no leído
+- Tipos: info, alert, error, success
+- Limpieza automática (>30 días leídas)
+- API RESTful completa para gestión
+- Sincronización multi-dispositivo
+
+### 💾 Gestión de Sesiones (NEW)
+- **Estado de UI persistente en servidor**: Sin localStorage
+- Guarda impresora seleccionada, búsquedas, vistas abiertas
+- Restauración automática al iniciar sesión
+- Limpieza automática de sesiones inactivas (>7 días)
+- Sincronización en tiempo real
+
 ### 🤖 Inteligencia Artificial
 - Integración con Gemini AI
 - Análisis predictivo de consumibles
@@ -259,7 +274,15 @@ npm start
 npm run check-db
 ```
 
-El servidor iniciará en `http://localhost:4000`
+### Limpieza de Base de Datos (Mantenimiento)
+```bash
+npm run cleanup:db
+```
+**Elimina:**
+- Notificaciones leídas con más de 30 días
+- Sesiones inactivas con más de 7 días
+
+El servidor iniciará en `http://localhost:5000`
 
 ---
 
@@ -277,7 +300,9 @@ gestorimpresoras-Backend/
 │   ├── authController.js       # Autenticación
 │   ├── logController.js        # Logs de mantenimiento
 │   ├── networkController.js    # Escaneo de red
+│   ├── notificationController.js # Notificaciones (NEW)
 │   ├── printerController.js    # Gestión de impresoras
+│   ├── sessionController.js    # Sesiones de usuario (NEW)
 │   ├── systemLogController.js  # System logs
 │   └── userController.js       # Gestión de usuarios
 ├── middleware/
@@ -285,14 +310,24 @@ gestorimpresoras-Backend/
 │   └── requestLogger.js        # Log de peticiones
 ├── models/
 │   ├── Log.js                  # Modelo de logs
+│   ├── Notification.js         # Modelo de notificaciones (NEW)
 │   ├── Printer.js              # Modelo de impresoras
 │   ├── SystemConfig.js         # Configuración global del sistema
-│   └── User.js                 # Modelo de usuarios
+│   ├── User.js                 # Modelo de usuarios
+│   └── UserSession.js          # Sesiones de usuario (NEW)
 ├── routes/
 │   ├── authRoutes.js           # Rutas de auth
 │   ├── healthRoutes.js         # Health check
+│   ├── index.js                # Montaje de todas las rutas
 │   ├── logRoutes.js            # Rutas de logs
 │   ├── networkRoutes.js        # Escaneo de red
+│   ├── notificationRoutes.js   # Rutas de notificaciones (NEW)
+│   ├── printerRoutes.js        # Rutas de impresoras
+│   ├── sessionRoutes.js        # Rutas de sesión (NEW)
+│   ├── systemConfigRoutes.js   # Configuración del sistema
+│   ├── systemLogRoutes.js      # System logs
+│   ├── uploadRoutes.js         # Upload de archivos
+│   └── userRoutes.js           # Rutas de usuarios
 │   ├── printerRoutes.js        # CRUD impresoras
 │   ├── systemConfigRoutes.js   # Configuración del sistema
 │   ├── systemLogRoutes.js      # System logs
@@ -380,6 +415,24 @@ PUT    /api/users/preferences      - Actualizar preferencias (Auth)
 ```
 GET    /api/system/config          - Obtener configuración global (Público)
 PUT    /api/system/config          - Actualizar configuración (Solo ADMIN)
+```
+
+### Notificaciones (NEW)
+```
+GET    /api/notifications          - Obtener notificaciones del usuario
+POST   /api/notifications          - Crear notificación
+PUT    /api/notifications/:id/read - Marcar como leída
+PUT    /api/notifications/read-all - Marcar todas como leídas
+DELETE /api/notifications/:id      - Eliminar notificación
+DELETE /api/notifications          - Eliminar todas
+GET    /api/notifications/unread-count - Conteo de no leídas
+```
+
+### Sesiones de Usuario (NEW)
+```
+GET    /api/session                - Obtener estado de sesión del usuario
+PUT    /api/session                - Actualizar estado de sesión
+DELETE /api/session                - Limpiar sesión (logout)
 ```
 
 ### Health Check

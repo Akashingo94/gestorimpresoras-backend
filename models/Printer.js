@@ -40,12 +40,24 @@ PrinterSchema.set('toJSON', {
  * @returns {Promise<Printer|null>}
  */
 PrinterSchema.statics.findByIpOrId = async function(identifier) {
-  // Intentar buscar por IP primero (solo activas)
-  let printer = await this.findOne({ ipAddress: identifier, deleted: false });
+  // Intentar buscar por IP primero (solo activas o sin campo deleted)
+  let printer = await this.findOne({ 
+    ipAddress: identifier,
+    $or: [
+      { deleted: false },
+      { deleted: { $exists: false } }
+    ]
+  });
   
   // Si no se encuentra y parece un ObjectId, buscar por ID
   if (!printer && mongoose.Types.ObjectId.isValid(identifier)) {
-    printer = await this.findOne({ _id: identifier, deleted: false });
+    printer = await this.findOne({ 
+      _id: identifier,
+      $or: [
+        { deleted: false },
+        { deleted: { $exists: false } }
+      ]
+    });
   }
   
   return printer;
@@ -55,7 +67,13 @@ PrinterSchema.statics.findByIpOrId = async function(identifier) {
  * Encuentra todas las impresoras activas (no eliminadas)
  */
 PrinterSchema.statics.findActive = function(query = {}) {
-  return this.find({ ...query, deleted: false });
+  return this.find({ 
+    ...query,
+    $or: [
+      { deleted: false },
+      { deleted: { $exists: false } }
+    ]
+  });
 };
 
 /**

@@ -8,7 +8,8 @@
     "dev": "nodemon --config nodemon.json server.js",
     "dev:clean": "node scripts/cleanup-ports.js && nodemon --config nodemon.json server.js",
     "check-db": "node check-mongodb.js",
-    "cleanup": "node scripts/cleanup-ports.js"
+    "cleanup": "node scripts/cleanup-ports.js",
+    "cleanup:db": "node migrations/cleanupJob.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

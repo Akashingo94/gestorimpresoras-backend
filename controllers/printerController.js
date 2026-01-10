@@ -17,7 +17,13 @@ const {
  */
 async function getAllPrinters(req, res) {
   try {
-    const printers = await Printer.find({ deleted: false }).sort({ location: 1 });
+    // Buscar impresoras donde deleted es false O no existe (para compatibilidad)
+    const printers = await Printer.find({ 
+      $or: [
+        { deleted: false },
+        { deleted: { $exists: false } }
+      ]
+    }).sort({ location: 1 });
     
     // Limpiar niveles de tóner para impresoras monocromáticas antes de enviar
     const cleanedPrinters = printers.map(printer => {
@@ -128,7 +134,13 @@ async function deletePrinter(req, res) {
   const { reason } = req.body;
   
   try {
-    const printer = await Printer.findOne({ _id: id, deleted: false });
+    const printer = await Printer.findOne({ 
+      _id: id,
+      $or: [
+        { deleted: false },
+        { deleted: { $exists: false } }
+      ]
+    });
     if (!printer) {
       return res.status(404).json({ error: 'Impresora no encontrada' });
     }
